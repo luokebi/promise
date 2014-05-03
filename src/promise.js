@@ -2,33 +2,52 @@ function Promise(func) {
 	var z = this;
 	this._thens = [];
 
-	function resolve() {
-		var args = Array.prototype.slice.call(arguments);
-		var fun = z._thens.shift();
+	function _resolve() {
+		_process('resolve', arguments);
+	}
 
-		if (fun) {
-			var p = fun.apply(null, args);
+	function _reject() {
+		_process('reject', arguments);
 
-			if (p instanceof Promise) {
-				p._thens = z._thens;
-			} else {
-				var promise = new Promise(function(resolve) {
-					setTimeout(function() {
-						resolve(p);
-					});
-				});
+	}
 
-				promise._thens = z._thens;
+	function _process(type, args) {
+		var args = Array.prototype.slice.call(args),
+			o = z._thens.shift();
+
+		if (type == 'resolve') {
+			var f = o ? o.resolve : null;
+		} else if (type == 'reject') {
+			var f = o ? o.reject : null;
+		}
+
+		if (f) {
+			try {
+				var p = f.apply(null, args);
+
+				if (p instanceof Promise) {
+					p._thens = z._thens;
+				} else {
+					var promise = Promise.resolve(p);
+					promise._thens = z._thens;
+				}
+			} catch (e) {
+				return _reject(e);
 			}
 		}
 	}
 
-	func.call(null, resolve);
+	setTimeout(function() {
+		func.call(null, _resolve, _reject);
+	});
 }
 
 
-Promise.prototype.then = function(fun) {
-	this._thens.push(fun);
+Promise.prototype.then = function(resolve, reject) {
+	this._thens.push({
+		resolve: resolve,
+		reject: reject
+	});
 
 	return this;
 };
@@ -44,17 +63,18 @@ Promise.resolve = function() {
 };
 
 Promise.all = function(promises) {
-	var len = promises.length;
-	var defer = Promise.deferred();
-	var results = [];
+	var l = len = promises.length,
+	    defer = Promise.deferred(),
+	    results = [];
 
 	for (var i = 0; i < len; i++) {
 		(function(i) {
 			var p = promises[i];
 			p.then(function(r) {
 				results[i] = r;
+				l--;
 
-				if (results.length === len) {
+				if (l === 0) {
 					defer.resolve(results);
 				}
 			});
@@ -65,9 +85,9 @@ Promise.all = function(promises) {
 };
 
 Promise.any = function(promises) {
-	var len = promises.length;
-	var defer = Promise.deferred();
-	var results = [];
+	var len = promises.length,
+	    defer = Promise.deferred(),
+	    results = [];
 
 	for (var i = 0; i < len; i++) {
 		(function(i) {
@@ -99,8 +119,9 @@ Promise.queue = function(funcs) {
 
 Promise.deferred = function() {
 	var defer = {};
-	defer.promise = new Promise(function(resolve) {
+	defer.promise = new Promise(function(resolve, reject) {
 		defer.resolve = resolve;
+		defer.reject = reject;
 	});
 
 	return defer;

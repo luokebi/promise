@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+<script type="text/javascript" src="../src/promise.js"></script>
+<script type="text/javascript">
+function log (str) {
+	document.body.innerHTML += str + '<br/>';
+}
+
+function a1 () {
+	var promise = new Promise (function (resolve, reject) {
+		setTimeout(function () {
+			log('a1');
+			resolve('a1');
+		},2000);
+	});
+ 
+	return promise;
+}
+
+function a2 () {
+	var defer = Promise.deferred();
+	setTimeout(function () {
+		log('a2');
+		defer.resolve('a2');
+	}, 1000);
+
+	return defer.promise;
+}
+ 
+function b (txt) {
+	log('b');
+	return txt + "b";
+   
+} 
+ 
+function c (txt) {
+	return new Promise (function (resolve, reject) {
+		setTimeout(function () {
+			log('c');
+			resolve(txt + 'c');
+		},3000);
+	})
+}
+
+function d (txt) {
+	log(txt + "d");
+
+	return txt + "d";
+} 
+
+function e (txt) {
+	log(txt + 'e');
+}
+a1().then(b).then(c).then(d).then(e);
+
+//a1().then(b).then(d);
+
+/*Promise.queue([a2,a1,c]).then(function(res) {
+	console.log(res);
+});*/
+
+/*Promise.all([a1(),a2(),c('test_')]).then(function(res) {
+	console.log(res);
+});*/
+
+/*Promise.any([a1(),a2(),c()]).then(function(res) {
+	console.log(res);
+});*/
+</script>
+</body>
+</html>
