@@ -1,12 +1,17 @@
 function Promise(func) {
 	var z = this;
 	this._thens = [];
+	this._status = 'pending';
+	this._reason = null;
 
 	function _resolve() {
 		_process('resolve', arguments);
 	}
 
 	function _reject() {
+		var args = Array.prototype.slice.call(arguments);
+		z._reason = args;
+		z._status = 'rejected';
 		_process('reject', arguments);
 
 	}
@@ -34,6 +39,12 @@ function Promise(func) {
 			} catch (e) {
 				return _reject(e);
 			}
+		} else {
+			if (type == 'reject') {
+				var promise = Promise.reject(z._reason);
+				promise._thens = z._thens;
+				promise._status = z._status;
+			}
 		}
 	}
 
@@ -52,11 +63,25 @@ Promise.prototype.then = function(resolve, reject) {
 	return this;
 };
 
+Promise.prototype.catch = function (reject) {
+	return this.then(null, reject);
+}
+
 Promise.resolve = function() {
 	var args = Array.prototype.slice.call(arguments);
 
-	var promise = new Promise(function(resolve) {
+	var promise = new Promise(function(resolve, reject) {
 		resolve.apply(null, args);
+	});
+
+	return promise;
+};
+
+Promise.reject = function() {
+	var args = Array.prototype.slice.call(arguments);
+
+	var promise = new Promise(function(resolve, reject) {
+		reject.apply(null, args);
 	});
 
 	return promise;
